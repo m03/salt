@@ -725,6 +725,95 @@ def restart_apppool(name):
     return cmd_ret['retcode'] == 0
 
 
+def get_apppool_setting(apppool, settings):
+    '''
+    Get the value of the setting for the IIS application pool.
+
+    :param str apppool: The name of the IIS application pool.
+    :param str settings: A dictionary of the setting names and their values.
+
+    :return: A dictionary of the provided settings and their values.
+    :rtype: dict
+
+    .. versionadded:: Carbon
+
+    CLI Example:
+
+    .. code-block:: bash
+
+        salt '*' win_iis.get_apppool_setting apppool='MyTestPool' settings="['processModel.identityType']"
+    '''
+    pscmd_get = list()
+    pscmd_validate = list()
+    settings_expr = list()
+    apppool_path = r"IIS:\AppPools\{0}".format(apppool)
+    pscmd_get.append(r"$AppPool = Get-Item -Path '{0}';".format(apppool_path))
+    pscmd_validate.append(str().join(pscmd_get))
+
+    if not settings:
+        _LOG.warning('No settings provided')
+        return dict()
+
+    current_apppools = list_apppools()
+
+    if apppool not in current_apppools:
+        _LOG.error('Application pool not present: %s', apppool)
+        return False
+
+    validate_properties = list()
+    for setting in settings:
+        # Build the commands to verify that the property names are valid. Non-existant
+        # properties will return $Null.
+        # Since we can't do a PsObject.Properties check on the full path to the
+        # property unless the property is a root-level property, we need to split at
+        # the last '.' and check at the appropriate level.
+        delim_index = setting.rfind('.')
+        if delim_index < 0:
+            validate_properties.append("$AppPool.PsObject.Properties['{0}']".format(setting))
+        else:
+            validate_properties.append(("$AppPool.('{0}').PsObject.Properties"
+                                        "['{1}']").format(setting[:delim_index],
+                                                          setting[(delim_index + 1):]))
+
+        # Since we can't use Select-Object on raw property.subproperty sets, wrap
+        # them into scriptblocks.
+        if '.' in list(setting):
+            settings_expr.append((r"@{{ Name = '{0}'; Expression ="
+                                  " {{ $_.{0} }} }}").format(setting))
+        else:
+            settings_expr.append(setting)
+
+    # Validate the properties.
+    pscmd_validate.append('@({0})'.format(', '.join(validate_properties)))
+    pscmd_validate.append(' | Foreach { if (-Not $_) { Throw } }')
+
+    cmd_validate_ret = _srvmgr(func=str().join(pscmd_validate))
+
+    if cmd_validate_ret['retcode'] != 0:
+        raise SaltInvocationError('One or more invalid property names were specified.')
+
+    pscmd_get.append(r" $AppPool | Select-Object {0}".format(', '.join(settings_expr)))
+
+    cmd_ret = _srvmgr(func=str().join(pscmd_get), as_json=True)
+
+    try:
+        items = json.loads(cmd_ret['stdout'], strict=False)
+    except ValueError:
+        _LOG.error('Unable to parse return data as Json.')
+
+    if isinstance(items, list):
+        items = items[0]
+
+    return items
+
+
+def set_apppool_setting(apppool, settings):
+    '''
+    '''
+    pscmd = list()
+
+    return False
+
 def list_apps(site):
     '''
     Get all configured IIS applications for the specified site.
