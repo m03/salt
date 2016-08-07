@@ -57,6 +57,27 @@ def deployed(name, sourcepath, apppool='', hostheader='', ipaddress='*', port=80
 
         If an application pool is specified, and that application pool does not already exist,
         it will be created.
+
+    Usage:
+
+    .. code-block:: yaml
+
+        site0-deployed:
+            win_iis.deployed:
+                - name: site0
+                - sourcepath: C:\\inetpub\\site0
+        
+        # or
+
+        site0-deployed:
+            win_iis.deployed:
+                - name: site0
+                - sourcepath: C:\\inetpub\\site0
+                - apppool: site0
+                - hostheader: site0.local 
+                - ipaddress: '*'
+                - port: 443
+                - protocol: https 
     '''
     ret = {'name': name,
            'changes': {},
@@ -87,6 +108,14 @@ def remove_site(name):
     Delete a website from IIS.
 
     :param str name: The IIS site name.
+
+    Usage:
+
+    .. code-block:: yaml
+
+        defaultwebsite-remove:
+            win_iis.remove_site:
+                - name: Default Web Site
     '''
 
     ret = {'name': name,
@@ -127,6 +156,27 @@ def create_binding(name, site, hostheader='', ipaddress='*', port=80, protocol='
     :param str port: The TCP port of the binding.
     :param str protocol: The application protocol of the binding.
     :param str sslflags: The flags representing certificate type and storage of the binding.
+
+    Usage:
+
+    .. code-block:: yaml
+
+        site0-https-binding:
+            win_iis.create_binding:
+                - site: site0
+                - port: 443
+                - protocol: https
+
+        # or
+
+        site0-https-binding:
+            win_iis.create_binding:
+                - site: site0
+                - hostheader: site0.local
+                - ipaddress: '*' 
+                - port: 443
+                - protocol: https
+                - sslflags: 0
     '''
     ret = {'name': name,
            'changes': {},
@@ -160,6 +210,24 @@ def remove_binding(name, site, hostheader='', ipaddress='*', port=80):
     :param str hostheader: The host header of the binding.
     :param str ipaddress: The IP address of the binding.
     :param str port: The TCP port of the binding.
+
+    Usage:
+
+    .. code-block:: yaml
+
+        site0-https-binding-remove:
+            win_iis.remove_binding:
+                - site: site0
+                - port: 443
+
+        # or
+
+        site0-https-binding-remove:
+            win_iis.remove_binding:
+                - site: site0
+                - hostheader: site0.local
+                - ipaddress: '*'
+                - port: 443
     '''
     ret = {'name': name,
            'changes': {},
@@ -199,6 +267,25 @@ def create_cert_binding(name, site, hostheader='', ipaddress='*', port=443, sslf
     :param str ipaddress: The IP address of the binding.
     :param str port: The TCP port of the binding.
     :param str sslflags: Flags representing certificate type and certificate storage of the binding.
+
+    Usage:
+
+    .. code-block:: yaml
+
+        site0-cert-binding:
+            win_iis.create_cert_binding:
+                - name: 9988776655443322111000AAABBBCCCDDDEEEFFF
+                - site: site0
+        # or
+        
+        site0-cert-binding:
+            win_iis.create_cert_binding:
+                - name: 9988776655443322111000AAABBBCCCDDDEEEFFF
+                - site: site0
+                - hostheader: site0.local
+                - ipaddress: '*'
+                - port: 443
+                - sslflags: 1
 
     .. versionadded:: Carbon
     '''
@@ -248,6 +335,25 @@ def remove_cert_binding(name, site, hostheader='', ipaddress='*', port=443):
     :param str ipaddress: The IP address of the binding.
     :param str port: The TCP port of the binding.
 
+    Usage:
+
+    .. code-block:: yaml
+
+        site0-cert-binding-remove:
+            win_iis.remove_cert_binding:
+                - name: 9988776655443322111000AAABBBCCCDDDEEEFFF
+                - site: site0
+
+        # or
+
+        site0-cert-binding-remove:
+            win_iis.remove_cert_binding:
+                - name: 9988776655443322111000AAABBBCCCDDDEEEFFF
+                - site: site0
+                - hostheader: site0.local
+                - ipaddress: '*'
+                - port: 443
+
     .. versionadded:: Carbon
     '''
     ret = {'name': name,
@@ -288,6 +394,14 @@ def create_apppool(name):
         It will not modify the configuration of an existing application pool.
 
     :param str name: The name of the IIS application pool.
+
+    Usage:
+
+    .. code-block:: yaml
+
+        site0-apppool:
+            win_iis.create_apppool:
+                - name: site0
     '''
 
     ret = {'name': name,
@@ -318,6 +432,14 @@ def remove_apppool(name):
     Remove an IIS application pool.
 
     :param str name: The name of the IIS application pool.
+
+    Usage:
+
+    .. code-block:: yaml
+
+        defaultapppool-remove:
+            win_iis.remove_apppool:
+                - name: DefaultAppPool
     '''
 
     ret = {'name': name,
@@ -350,6 +472,31 @@ def container_setting(name, container, settings=None):
     :param str container: The type of IIS container. The container types are:
         AppPools, Sites, SslBindings
     :param str settings: A dictionary of the setting names and their values.
+
+    Usage:
+
+    .. code-block:: yaml
+
+        site0-apppool-setting:
+            win_iis.container_setting:
+                - name: site0
+                - container: AppPools
+                - settings:
+                    managedPipelineMode: Integrated
+                    processModel.maxProcesses: 1
+                    processModel.userName: TestUser
+                    processModel.password: TestPassword
+
+        # or
+
+        site0-site-setting:
+            win_iis.container_setting:
+                - name: site0
+                - container: Sites
+                - settings:
+                    logFile.logFormat: W3C
+                    logFile.period: Daily
+                    limits.maxUrlSegments: 32
     '''
     ret = {'name': name,
            'changes': {},
@@ -419,6 +566,17 @@ def create_app(name, site, sourcepath, apppool=None):
     :param str site: The IIS site name.
     :param str sourcepath: The physical path.
     :param str apppool: The name of the IIS application pool.
+
+    Usage:
+
+    .. code-block:: yaml
+
+        site0-v1-app:
+            win_iis.create_app:
+                - name: v1
+                - site: site0
+                - sourcepath: C:\\inetpub\\site0\\v1
+                - apppool: site0
     '''
     ret = {'name': name,
            'changes': {},
@@ -449,6 +607,15 @@ def remove_app(name, site):
 
     :param str name: The application name.
     :param str site: The IIS site name.
+
+    Usage:
+
+    .. code-block:: yaml
+
+        site0-v1-app-remove:
+            win_iis.remove_app:
+                - name: v1
+                - site: site0
     '''
     ret = {'name': name,
            'changes': {},
@@ -486,6 +653,16 @@ def create_vdir(name, site, sourcepath, app='/'):
     :param str site: The IIS site name.
     :param str sourcepath: The physical path.
     :param str app: The IIS application.
+
+    Usage:
+
+    .. code-block:: yaml
+
+        site0-foo-vdir:
+            win_iis.create_vdir:
+                - name: foo
+                - site: site0
+                - sourcepath: C:\\inetpub\\vdirs\\foo
     '''
     ret = {'name': name,
            'changes': {},
@@ -518,6 +695,15 @@ def remove_vdir(name, site, app='/'):
     :param str name: The virtual directory name.
     :param str site: The IIS site name.
     :param str app: The IIS application.
+
+    Usage:
+
+    .. code-block:: yaml
+
+        site0-foo-vdir-remove:
+            win_iis.remove_vdir:
+                - name: foo
+                - site: site0
     '''
     ret = {'name': name,
            'changes': {},
