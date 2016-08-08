@@ -58,7 +58,8 @@ def deployed(name, sourcepath, apppool='', hostheader='', ipaddress='*', port=80
         If an application pool is specified, and that application pool does not already exist,
         it will be created.
 
-    Usage:
+    Example of usage with only the required arguments. This will default to using the default application pool
+    assigned by IIS:
 
     .. code-block:: yaml
 
@@ -66,8 +67,10 @@ def deployed(name, sourcepath, apppool='', hostheader='', ipaddress='*', port=80
             win_iis.deployed:
                 - name: site0
                 - sourcepath: C:\\inetpub\\site0
-        
-        # or
+
+    Example of usage specifying all available arguments:
+
+    .. code-block:: yaml
 
         site0-deployed:
             win_iis.deployed:
@@ -157,17 +160,17 @@ def create_binding(name, site, hostheader='', ipaddress='*', port=80, protocol='
     :param str protocol: The application protocol of the binding.
     :param str sslflags: The flags representing certificate type and storage of the binding.
 
-    Usage:
+    Example of usage with only the required arguments:
 
     .. code-block:: yaml
 
         site0-https-binding:
             win_iis.create_binding:
                 - site: site0
-                - port: 443
-                - protocol: https
 
-        # or
+    Example of usage specifying all available arguments:
+
+    .. code-block:: yaml
 
         site0-https-binding:
             win_iis.create_binding:
@@ -211,16 +214,17 @@ def remove_binding(name, site, hostheader='', ipaddress='*', port=80):
     :param str ipaddress: The IP address of the binding.
     :param str port: The TCP port of the binding.
 
-    Usage:
+    Example of usage with only the required arguments:
 
     .. code-block:: yaml
 
         site0-https-binding-remove:
             win_iis.remove_binding:
                 - site: site0
-                - port: 443
 
-        # or
+    Example of usage specifying all available arguments:
+
+    .. code-block:: yaml
 
         site0-https-binding-remove:
             win_iis.remove_binding:
@@ -268,7 +272,7 @@ def create_cert_binding(name, site, hostheader='', ipaddress='*', port=443, sslf
     :param str port: The TCP port of the binding.
     :param str sslflags: Flags representing certificate type and certificate storage of the binding.
 
-    Usage:
+    Example of usage with only the required arguments:
 
     .. code-block:: yaml
 
@@ -276,7 +280,10 @@ def create_cert_binding(name, site, hostheader='', ipaddress='*', port=443, sslf
             win_iis.create_cert_binding:
                 - name: 9988776655443322111000AAABBBCCCDDDEEEFFF
                 - site: site0
-        # or
+
+    Example of usage specifying all available arguments:
+
+    .. code-block:: yaml
         
         site0-cert-binding:
             win_iis.create_cert_binding:
@@ -335,7 +342,7 @@ def remove_cert_binding(name, site, hostheader='', ipaddress='*', port=443):
     :param str ipaddress: The IP address of the binding.
     :param str port: The TCP port of the binding.
 
-    Usage:
+    Example of usage with only the required arguments:
 
     .. code-block:: yaml
 
@@ -344,7 +351,9 @@ def remove_cert_binding(name, site, hostheader='', ipaddress='*', port=443):
                 - name: 9988776655443322111000AAABBBCCCDDDEEEFFF
                 - site: site0
 
-        # or
+    Example of usage specifying all available arguments:
+
+    .. code-block:: yaml
 
         site0-cert-binding-remove:
             win_iis.remove_cert_binding:
@@ -473,7 +482,7 @@ def container_setting(name, container, settings=None):
         AppPools, Sites, SslBindings
     :param str settings: A dictionary of the setting names and their values.
 
-    Usage:
+    Example of usage for the AppPools container:
 
     .. code-block:: yaml
 
@@ -487,7 +496,9 @@ def container_setting(name, container, settings=None):
                     processModel.userName: TestUser
                     processModel.password: TestPassword
 
-        # or
+    Example of usage for the Sites container:
+
+    .. code-block:: yaml
 
         site0-site-setting:
             win_iis.container_setting:
@@ -567,7 +578,17 @@ def create_app(name, site, sourcepath, apppool=None):
     :param str sourcepath: The physical path.
     :param str apppool: The name of the IIS application pool.
 
-    Usage:
+    Example of usage with only the required arguments:
+
+    .. code-block:: yaml
+
+        site0-v1-app:
+            win_iis.create_app:
+                - name: v1
+                - site: site0
+                - sourcepath: C:\\inetpub\\site0\\v1
+
+    Example of usage specifying all available arguments:
 
     .. code-block:: yaml
 
@@ -654,7 +675,7 @@ def create_vdir(name, site, sourcepath, app='/'):
     :param str sourcepath: The physical path.
     :param str app: The IIS application.
 
-    Usage:
+    Example of usage with only the required arguments:
 
     .. code-block:: yaml
 
@@ -663,6 +684,17 @@ def create_vdir(name, site, sourcepath, app='/'):
                 - name: foo
                 - site: site0
                 - sourcepath: C:\\inetpub\\vdirs\\foo
+
+    Example of usage specifying all available arguments:
+
+    .. code-block:: yaml
+
+        site0-foo-vdir:
+            win_iis.create_vdir:
+                - name: foo
+                - site: site0
+                - sourcepath: C:\\inetpub\\vdirs\\foo
+                - app: '/'
     '''
     ret = {'name': name,
            'changes': {},
@@ -696,7 +728,7 @@ def remove_vdir(name, site, app='/'):
     :param str site: The IIS site name.
     :param str app: The IIS application.
 
-    Usage:
+    Example of usage with only the required arguments:
 
     .. code-block:: yaml
 
@@ -704,6 +736,16 @@ def remove_vdir(name, site, app='/'):
             win_iis.remove_vdir:
                 - name: foo
                 - site: site0
+
+    Example of usage specifying all available arguments:
+
+    .. code-block:: yaml
+
+        site0-foo-vdir-remove:
+            win_iis.remove_vdir:
+                - name: foo
+                - site: site0
+                - app: '/'
     '''
     ret = {'name': name,
            'changes': {},
