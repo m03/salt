@@ -67,6 +67,7 @@ except ImportError:
     HAS_SOFTWAREPROPERTIES = False
 # pylint: enable=import-error
 
+APT_LISTS_PATH = '/var/lib/apt/lists'
 # Source format for urllib fallback on PPA handling
 LP_SRC_FORMAT = 'deb http://ppa.launchpad.net/{0}/{1}/ubuntu {2} main'
 LP_PVT_SRC_FORMAT = 'deb https://{0}private-ppa.launchpad.net/{1}/{2}/ubuntu' \
@@ -374,7 +375,7 @@ def refresh_db(cache_valid_time=0, failhard=False):
 
         salt '*' pkg.refresh_db
     '''
-    APT_LISTS_PATH = "/var/lib/apt/lists"
+    failhard = salt.utils.is_true(failhard)
     ret = {}
     error_repos = list()
 
@@ -2240,11 +2241,7 @@ def mod_repo(repo, saltenv='base', **kwargs):
         kwargs['architectures'] = kwargs['architectures'].split(',')
 
     if 'disabled' in kwargs:
-        kw_disabled = kwargs['disabled']
-        if kw_disabled is True or str(kw_disabled).lower() == 'true':
-            kwargs['disabled'] = True
-        else:
-            kwargs['disabled'] = False
+        kwargs['disabled'] = salt.utils.is_true(kwargs['disabled'])
 
     kw_type = kwargs.get('type')
     kw_dist = kwargs.get('dist')
@@ -2252,12 +2249,11 @@ def mod_repo(repo, saltenv='base', **kwargs):
     for source in repos:
         # This series of checks will identify the starting source line
         # and the resulting source line.  The idea here is to ensure
-        # we are not retuning bogus data because the source line
+        # we are not returning bogus data because the source line
         # has already been modified on a previous run.
-        if ((source.type == repo_type and source.uri == repo_uri
-             and source.dist == repo_dist) or
-            (source.dist == kw_dist and source.type == kw_type
-             and source.type == kw_type)):
+
+        if ((source.type == repo_type and source.uri == repo_uri and source.dist == repo_dist)
+                or (source.dist == kw_dist and source.type == kw_type)):
 
             for comp in full_comp_list:
                 if comp in getattr(source, 'comps', []):
