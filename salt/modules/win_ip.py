@@ -19,6 +19,22 @@ from salt.exceptions import (
 )
 from salt.ext.six.moves import range
 
+try:
+    import wmi
+    import salt.utils.winapi
+    _HAS_DEPENDENCIES = True
+except ImportError:
+    _HAS_DEPENDENCIES = False
+
+_INTERFACE_STATE = {
+    'State':{
+        'Disabled': 3
+    },
+    'StatusInfo': {
+        'Disabled': 4
+    }
+}
+
 # Set up logging
 log = logging.getLogger(__name__)
 
@@ -30,9 +46,30 @@ def __virtual__():
     '''
     Confine this module to Windows systems
     '''
-    if salt.utils.is_windows():
+    if salt.utils.is_windows() and _HAS_DEPENDENCIES:
         return __virtualname__
     return (False, "Module win_ip: module only works on Windows systems")
+
+#def _has_msft():
+#    '''
+#
+#    '''
+#    try:
+#        connection = wmi.WMI(namespace='StandardCimv2')
+#    except :
+#        except wmi.x_wmi as error:
+#            log.error('Encountered WMI error: %s', error.com_error)
+#        except (AttributeError, IndexError) as error:
+#            log.error('Error getting MSFT_NetIPInterface: %s', error)
+#    try:
+#        connection = wmi.WMI(namespace='cimv2')
+#
+#      except wmi.x_wmi as error:
+#          log.error('Encountered WMI error: %s', error.com_error)
+#      except (AttributeError, IndexError) as error:
+#          log.error('Error getting MSFT_NetIPInterface: %s', error)
+#    # NetConnectionID
+#    # NetConnectionStatus
 
 
 def _interface_configs():
@@ -150,17 +187,33 @@ def is_enabled(iface):
 
         salt -G 'os_family:Windows' ip.is_enabled 'Local Area Connection #2'
     '''
-    cmd = ['netsh', 'interface', 'show', 'interface', 'name={0}'.format(iface)]
-    iface_found = False
-    for line in __salt__['cmd.run'](cmd, python_shell=False).splitlines():
-        if 'Connect state:' in line:
-            iface_found = True
-            return line.split()[-1] == 'Connected'
-    if not iface_found:
-        raise CommandExecutionError(
-            'Interface \'{0}\' not found'.format(iface)
-        )
-    return False
+    # Default to assuming that the interface is enabled.
+    state_enabled = True
+
+    with salt.utils.winapi.Com():
+        try:
+            connection = wmi.WMI(namespace='StandardCimv2')
+            objs = connection.MSFT_NetAdapter(Name=iface)[0]
+            state = int(getattr(objs, 'State'))
+
+            if state == _INTERFACE_STATE['State']['Disabled']:
+                state_enabled = False
+        except (AttributeError, IndexError, wmi.x_wmi):
+            log.debug(('MSFT_NetAdapter may not be available on this OS.'
+                       ' Checking Win32_NetworkAdapter.'))
+
+            try:
+                connection = wmi.WMI(namespace='cimv2')
+                objs = connection.Win32_NetworkAdapter(NetConnectionID=iface)[0]
+                state_enabled = salt.utils.is_true(getattr(objs, 'NetEnabled'))
+            except wmi.x_wmi as error:
+                log.error('Encountered WMI error: %s', error.com_error)
+                raise error
+            except (AttributeError, IndexError) as error:
+                log.error('Error getting Win32_NetworkAdapter: %s', error)
+                raise error
+
+    return state_enabled
 
 
 def is_disabled(iface):
@@ -176,6 +229,41 @@ def is_disabled(iface):
     return not is_enabled(iface)
 
 
+def _set_interface_state(iface, state_enabled):
+    '''
+    Set the interface state.
+    '''
+    # Details of MSFT_NetAdapter can be found here:
+    # https://msdn.microsoft.com/en-us/library/hh968170(v=vs.85).aspx
+    # https://tools.ietf.org/search/rfc2863#section-3.1.13
+    with salt.utils.winapi.Com():
+        try:
+            connection = wmi.WMI(namespace='StandardCimv2')
+            objs = connection.MSFT_NetAdapter(Name=iface)[0]
+        except (AttributeError, IndexError, wmi.x_wmi):
+            log.debug(('MSFT_NetAdapter may not be available on this OS.'
+                       ' Checking Win32_NetworkAdapter.'))
+            try:
+                connection = wmi.WMI(namespace='cimv2')
+                objs = connection.Win32_NetworkAdapter(NetConnectionID=iface)[0]
+            except wmi.x_wmi as error:
+                log.error('Encountered WMI error: %s', error.com_error)
+                raise error
+            except (AttributeError, IndexError) as error:
+                log.error('Error getting Win32_NetworkAdapter: %s', error)
+                raise error
+
+        try:
+            if state_enabled:
+                log.debug('Enabling interface: %s', iface)
+                objs.Enable()
+            else:
+                log.debug('Disabling interface: %s', iface)
+                objs.Disable()
+        except wmi.x_wmi as error:
+            log.error('Encountered WMI error: %s', error.com_error)
+
+
 def enable(iface):
     '''
     Enable an interface
@@ -187,9 +275,11 @@ def enable(iface):
         salt -G 'os_family:Windows' ip.enable 'Local Area Connection #2'
     '''
     if is_enabled(iface):
+        log.debug('Interface already enabled: %s', iface)
         return True
-    cmd = ['netsh', 'interface', 'set', 'interface', iface, 'admin=ENABLED']
-    __salt__['cmd.run'](cmd, python_shell=False)
+
+    _set_interface_state(iface, state_enabled=True)
+
     return is_enabled(iface)
 
 
@@ -204,9 +294,11 @@ def disable(iface):
         salt -G 'os_family:Windows' ip.disable 'Local Area Connection #2'
     '''
     if is_disabled(iface):
+        log.debug('Interface already disabled: %s', iface)
         return True
-    cmd = ['netsh', 'interface', 'set', 'interface', iface, 'admin=DISABLED']
-    __salt__['cmd.run'](cmd, python_shell=False)
+
+    _set_interface_state(iface, state_enabled=False)
+
     return is_disabled(iface)
 
 
@@ -385,7 +477,7 @@ def set_dhcp_all(iface):
 
 def get_default_gateway():
     '''
-    Set DNS source to DHCP on Windows
+    Get the default gateway on Windows
 
     CLI Example:
 
